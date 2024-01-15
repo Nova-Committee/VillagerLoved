@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "committee.nova.villagerloved.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "villagerloved.refmap.json",
+  "mixins": [
+    "MixinVillager"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
