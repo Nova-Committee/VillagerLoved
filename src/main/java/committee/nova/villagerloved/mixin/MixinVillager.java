@@ -6,13 +6,9 @@ import committee.nova.villagerloved.VillagerLoved;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.spongepowered.asm.mixin.Final;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Mutable;
-import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 import java.util.List;
 import java.util.Map;
@@ -20,6 +16,9 @@ import java.util.Set;
 
 @Mixin(Villager.class)
 public class MixinVillager {
+    @Unique
+    private static boolean villagerloved$initialized;
+
     @Mutable
     @Shadow
     @Final
@@ -30,8 +29,8 @@ public class MixinVillager {
     @Final
     public static Map<Item, Integer> FOOD_POINTS;
 
-    @Inject(method = "<clinit>", at = @At("RETURN"))
-    private static void inject$clinit(CallbackInfo ci) {
+    @Unique
+    private static void villagerloved$initVillagerLoved() {
         final List<Item> villagerLoved = ForgeRegistries.ITEMS.getValues()
                 .stream()
                 .filter(i -> i.getDefaultInstance().is(VillagerLoved.VILLAGER_LOVED))
@@ -45,5 +44,23 @@ public class MixinVillager {
                 .filter(Item::isEdible)
                 .forEach(i -> foodPoints.put(i, i.getFoodProperties().getNutrition()));
         FOOD_POINTS = foodPoints;
+    }
+
+    @Redirect(method = "wantsToPickUp", at = @At(value = "INVOKE", target = "Ljava/util/Set;contains(Ljava/lang/Object;)Z", remap = false))
+    private boolean redirect$wantsToPickup(Set<Item> instance, Object o) {
+        if (!villagerloved$initialized) {
+            villagerloved$initVillagerLoved();
+            villagerloved$initialized = true;
+        }
+        return WANTED_ITEMS.contains((Item) o);
+    }
+
+    @Redirect(method = "eatUntilFull", at = @At(value = "INVOKE", target = "Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"))
+    private Object redirect$eatUntilFull(Map<Item, Integer> instance, Object o) {
+        if (!villagerloved$initialized) {
+            villagerloved$initVillagerLoved();
+            villagerloved$initialized = true;
+        }
+        return FOOD_POINTS.get((Item) o);
     }
 }
